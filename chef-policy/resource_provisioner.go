@@ -317,7 +317,14 @@ func (p *Provisioner) runChefClientFunc(
 	confDir string) func(terraform.UIOutput, communicator.Communicator) error {
 	return func(o terraform.UIOutput, comm communicator.Communicator) error {
 		fb := path.Join(confDir, firstBoot)
-		cmd := fmt.Sprintf("%s -j %q -E %q", chefCmd, fb, p.Environment)
+		var cmd string
+
+		// Policyfiles do not support chef environments, so don't pass the `-E` flag.
+		if p.UsePolicyfile {
+			cmd = fmt.Sprintf("%s -j %q", chefCmd, fb)
+		} else {
+			cmd = fmt.Sprintf("%s -j %q -E %q", chefCmd, fb, p.Environment)
+		}
 
 		if p.LogToFile {
 			if err := os.MkdirAll(logfileDir, 0755); err != nil {
