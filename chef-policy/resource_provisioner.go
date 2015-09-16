@@ -69,8 +69,8 @@ type Provisioner struct {
 	Environment          string      `mapstructure:"environment"`
 	LogToFile            bool        `mapstructure:"log_to_file"`
 	UsePolicyfile        bool        `mapstructure:"use_policyfile"`
-	PolicyGroup          string        `mapstructure:"policy_group"`
-	PolicyName           string        `mapstructure:"policy_name"`
+	PolicyGroup          string      `mapstructure:"policy_group"`
+	PolicyName           string      `mapstructure:"policy_name"`
 	HTTPProxy            string      `mapstructure:"http_proxy"`
 	HTTPSProxy           string      `mapstructure:"https_proxy"`
 	NOProxy              []string    `mapstructure:"no_proxy"`
