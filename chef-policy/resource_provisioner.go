@@ -24,7 +24,6 @@ import (
 
 const (
 	clienrb        = "client.rb"
-	defaultEnv     = "_default"
 	firstBoot      = "first-boot.json"
 	logfileDir     = "logfiles"
 	linuxChefCmd   = "chef-client"
@@ -41,11 +40,9 @@ chef_server_url         "{{ .ServerURL }}"
 validation_client_name  "{{ .ValidationClientName }}"
 node_name               "{{ .NodeName }}"
 
-{{ if .UsePolicyfile }}
 use_policyfile true
 policy_group 						"{{ .PolicyGroup }}"
 policy_name 						"{{ .PolicyName }}"
-{{ end }}
 
 {{ if .HTTPProxy }}
 http_proxy          "{{ .HTTPProxy }}"
@@ -66,9 +63,7 @@ ENV['HTTPS_PROXY'] = "{{ .HTTPSProxy }}"
 // Provisioner represents a specificly configured chef provisioner
 type Provisioner struct {
 	Attributes           interface{} `mapstructure:"attributes"`
-	Environment          string      `mapstructure:"environment"`
 	LogToFile            bool        `mapstructure:"log_to_file"`
-	UsePolicyfile        bool        `mapstructure:"use_policyfile"`
 	PolicyGroup          string      `mapstructure:"policy_group"`
 	PolicyName           string      `mapstructure:"policy_name"`
 	HTTPProxy            string      `mapstructure:"http_proxy"`
@@ -180,9 +175,6 @@ func (r *ResourceProvisioner) Validate(c *terraform.ResourceConfig) (ws []string
 	if p.NodeName == "" {
 		es = append(es, fmt.Errorf("Key not found: node_name"))
 	}
-	if !p.UsePolicyfile && p.RunList == nil {
-		es = append(es, fmt.Errorf("Key not found: run_list"))
-	}
 	if p.ServerURL == "" {
 		es = append(es, fmt.Errorf("Key not found: server_url"))
 	}
@@ -192,10 +184,10 @@ func (r *ResourceProvisioner) Validate(c *terraform.ResourceConfig) (ws []string
 	if p.ValidationKeyPath == "" {
 		es = append(es, fmt.Errorf("Key not found: validation_key_path"))
 	}
-	if p.UsePolicyfile && p.PolicyName == "" {
+	if p.PolicyName == "" {
 		es = append(es, fmt.Errorf("Key not found: policy_name"))
 	}
-	if p.UsePolicyfile && p.PolicyGroup == "" {
+	if p.PolicyGroup == "" {
 		es = append(es, fmt.Errorf("Key not found: policy_group"))
 	}
 
@@ -233,10 +225,6 @@ func (r *ResourceProvisioner) decodeConfig(c *terraform.ResourceConfig) (*Provis
 
 	if err := dec.Decode(m); err != nil {
 		return nil, err
-	}
-
-	if p.Environment == "" {
-		p.Environment = defaultEnv
 	}
 
 	for i, hint := range p.OhaiHints {
@@ -320,11 +308,7 @@ func (p *Provisioner) runChefClientFunc(
 		var cmd string
 
 		// Policyfiles do not support chef environments, so don't pass the `-E` flag.
-		if p.UsePolicyfile {
-			cmd = fmt.Sprintf("%s -j %q", chefCmd, fb)
-		} else {
-			cmd = fmt.Sprintf("%s -j %q -E %q", chefCmd, fb, p.Environment)
-		}
+		cmd = fmt.Sprintf("%s -j %q", chefCmd, fb)
 
 		if p.LogToFile {
 			if err := os.MkdirAll(logfileDir, 0755); err != nil {
@@ -432,11 +416,6 @@ func (p *Provisioner) deployConfigFiles(
 	if _, found := fb["run_list"]; found {
 		log.Printf("[WARNING] Found a 'run_list' specified in the configured attributes! " +
 			"This value will be overwritten by the value of the `run_list` argument!")
-	}
-
-	// Add the initial runlist to the first boot settings
-	if !p.UsePolicyfile {
-		fb["run_list"] = p.RunList
 	}
 
 	// Marshal the first boot settings to JSON
